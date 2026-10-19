@@ -25,14 +25,20 @@ class CodeGeneratorService
     /**
      * Generate kode bahan baku otomatis (5 digit)
      * Digit 1: 2 (Bahan Baku)
-     * Digit 2: ID / urutan Supplier (1 digit)
+     * Digit 2: diambil dari kode supplier, yaitu angka ke-2 dari kiri kode supplier
      * Digit 3: ID Kategori (1 digit)
      * Digit 4-5: Nomor urut (2 digit)
-     * Contoh: 20601 -> Bahan (2), Supplier (0/mod), Kategori (6), Urutan (01)
+     * Contoh supplier 30001 -> digit ke-2 = 0, kode bahan baku = 21001
      */
     public static function generateRawMaterialCode(int $supplierId, int $categoryId): string
     {
-        $supplierDigit = (string) ($supplierId % 10);
+        $supplier = Supplier::find($supplierId);
+        $supplierDigit = '0';
+
+        if ($supplier && is_string($supplier->kode_supplier) && strlen($supplier->kode_supplier) >= 2) {
+            $supplierDigit = (string) $supplier->kode_supplier[1];
+        }
+
         $categoryDigit = (string) ($categoryId % 10);
 
         $count = RawMaterial::where('supplier_id', $supplierId)

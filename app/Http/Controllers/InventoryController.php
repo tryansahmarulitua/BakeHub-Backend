@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryTransaction;
-use App\Models\RawMaterial;
-use App\Models\Product;
-use App\Services\InventoryService;
 use App\Exports\InventoryExport;
+use App\Models\InventoryTransaction;
+use App\Models\Product;
+use App\Models\RawMaterial;
+use App\Services\InventoryService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
 class InventoryController extends Controller
@@ -26,12 +26,12 @@ class InventoryController extends Controller
         }
         if ($request->has('search')) {
             $query->where('nama_bahan', 'like', "%{$request->search}%")
-                  ->orWhere('kode_bahan', 'like', "%{$request->search}%");
+                ->orWhere('kode_bahan', 'like', "%{$request->search}%");
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $query->paginate($request->get('per_page', 20)),
+            'data' => $query->paginate($request->get('per_page', 20)),
         ]);
     }
 
@@ -41,12 +41,12 @@ class InventoryController extends Controller
 
         if ($request->has('search')) {
             $query->where('nama_produk', 'like', "%{$request->search}%")
-                  ->orWhere('kode_produk', 'like', "%{$request->search}%");
+                ->orWhere('kode_produk', 'like', "%{$request->search}%");
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $query->paginate($request->get('per_page', 20)),
+            'data' => $query->paginate($request->get('per_page', 20)),
         ]);
     }
 
@@ -57,7 +57,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $query->get(),
+            'data' => $query->get(),
         ]);
     }
 
@@ -67,17 +67,17 @@ class InventoryController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'id'                  => $item->id,
-                    'item_type'           => 'Bahan Baku',
-                    'kode'                => $item->kode_bahan,
-                    'kode_bahan'          => $item->kode_bahan,
-                    'nama'                => $item->nama_bahan,
-                    'nama_bahan'          => $item->nama_bahan,
-                    'stok'                => $item->stok,
-                    'unit'                => $item->unit,
+                    'id' => $item->id,
+                    'item_type' => 'Bahan Baku',
+                    'kode' => $item->kode_bahan,
+                    'kode_bahan' => $item->kode_bahan,
+                    'nama' => $item->nama_bahan,
+                    'nama_bahan' => $item->nama_bahan,
+                    'stok' => $item->stok,
+                    'unit' => $item->unit,
                     'tanggal_kedaluwarsa' => $item->tanggal_kedaluwarsa ? substr((string) $item->tanggal_kedaluwarsa, 0, 10) : null,
-                    'category'            => $item->category,
-                    'supplier'            => $item->supplier,
+                    'category' => $item->category,
+                    'supplier' => $item->supplier,
                 ];
             });
 
@@ -85,17 +85,17 @@ class InventoryController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'id'                  => $item->id,
-                    'item_type'           => 'Produk',
-                    'kode'                => $item->kode_produk,
-                    'kode_bahan'          => $item->kode_produk,
-                    'nama'                => $item->nama_produk,
-                    'nama_bahan'          => $item->nama_produk,
-                    'stok'                => $item->stok,
-                    'unit'                => $item->unit,
+                    'id' => $item->id,
+                    'item_type' => 'Produk',
+                    'kode' => $item->kode_produk,
+                    'kode_bahan' => $item->kode_produk,
+                    'nama' => $item->nama_produk,
+                    'nama_bahan' => $item->nama_produk,
+                    'stok' => $item->stok,
+                    'unit' => $item->unit,
                     'tanggal_kedaluwarsa' => $item->tanggal_kedaluwarsa ? substr((string) $item->tanggal_kedaluwarsa, 0, 10) : null,
-                    'category'            => $item->category,
-                    'supplier'            => null,
+                    'category' => $item->category,
+                    'supplier' => null,
                 ];
             });
 
@@ -114,7 +114,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $merged,
+            'data' => $merged,
         ]);
     }
 
@@ -142,7 +142,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $query->paginate($request->get('per_page', 20)),
+            'data' => $query->paginate($request->get('per_page', 20)),
         ]);
     }
 
@@ -150,14 +150,14 @@ class InventoryController extends Controller
     {
         $request->validate([
             'item_type' => 'required|in:raw_material,product',
-            'item_id'   => 'required|integer',
-            'quantity'  => 'required|numeric|min:0.01',
-            'type'      => 'required|in:increase,decrease',
-            'reason'    => 'required|string',
-            'date'      => 'required|date',
+            'item_id' => 'required|integer',
+            'quantity' => 'required|numeric|min:0.01',
+            'type' => 'required|in:increase,decrease',
+            'reason' => 'required|string',
+            'date' => 'required|date',
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request) {
             $txType = $request->type === 'increase' ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT';
 
             if ($request->type === 'increase') {
@@ -187,7 +187,7 @@ class InventoryController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Penyesuaian stok berhasil',
-                'data'    => $tx,
+                'data' => $tx,
             ]);
         });
     }
@@ -195,17 +195,22 @@ class InventoryController extends Controller
     public function stockCard(Request $request)
     {
         $request->validate([
-            'item_type' => 'required|in:raw_material,product',
-            'item_id'   => 'required|integer',
+            'item_type' => 'nullable|in:raw_material,product',
+            'item_id' => 'nullable|integer',
             'from_date' => 'nullable|date',
-            'to_date'   => 'nullable|date',
+            'to_date' => 'nullable|date',
         ]);
 
-        $query = InventoryTransaction::where('item_type', $request->item_type)
-            ->where('item_id', $request->item_id)
+        $query = InventoryTransaction::query()
             ->orderBy('transaction_date')
             ->orderBy('id');
 
+        if ($request->filled('item_type')) {
+            $query->where('item_type', $request->item_type);
+        }
+        if ($request->filled('item_id')) {
+            $query->where('item_id', $request->item_id);
+        }
         if ($request->from_date) {
             $query->where('transaction_date', '>=', $request->from_date);
         }
@@ -215,7 +220,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $query->paginate($request->get('per_page', 50)),
+            'data' => $query->paginate($request->get('per_page', 50)),
         ]);
     }
 
@@ -241,7 +246,7 @@ class InventoryController extends Controller
             $query->where('transaction_date', '<=', $request->to_date);
         }
 
-        $data = $query->get()->map(fn($t) => [
+        $data = $query->get()->map(fn ($t) => [
             'Tanggal' => $t->transaction_date,
             'Tipe Item' => $t->item_type === 'raw_material' ? 'Bahan Baku' : 'Produk',
             'Item ID' => $t->item_id,
@@ -258,26 +263,32 @@ class InventoryController extends Controller
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('reports.transactions', ['data' => $data]);
-            return $pdf->download('laporan-transaksi-' . now()->format('Y-m-d') . '.pdf');
+
+            return $pdf->download('laporan-transaksi-'.now()->format('Y-m-d').'.pdf');
         }
 
-        return Excel::download(new InventoryExport($data, 'Transaksi Inventori'), 'laporan-transaksi-' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new InventoryExport($data, 'Transaksi Inventori'), 'laporan-transaksi-'.now()->format('Y-m-d').'.xlsx');
     }
 
     public function exportStockCard(Request $request)
     {
         $request->validate([
-            'item_type' => 'required|in:raw_material,product',
-            'item_id'   => 'required|integer',
+            'item_type' => 'nullable|in:raw_material,product',
+            'item_id' => 'nullable|integer',
             'from_date' => 'nullable|date',
-            'to_date'   => 'nullable|date',
+            'to_date' => 'nullable|date',
         ]);
 
-        $query = InventoryTransaction::where('item_type', $request->item_type)
-            ->where('item_id', $request->item_id)
+        $query = InventoryTransaction::query()
             ->orderBy('transaction_date')
             ->orderBy('id');
 
+        if ($request->filled('item_type')) {
+            $query->where('item_type', $request->item_type);
+        }
+        if ($request->filled('item_id')) {
+            $query->where('item_id', $request->item_id);
+        }
         if ($request->from_date) {
             $query->where('transaction_date', '>=', $request->from_date);
         }
@@ -285,13 +296,13 @@ class InventoryController extends Controller
             $query->where('transaction_date', '<=', $request->to_date);
         }
 
-        $data = $query->get()->map(fn($t) => [
+        $data = $query->get()->map(fn ($t) => [
             'Tanggal' => $t->transaction_date,
             'Tipe Transaksi' => $t->transaction_type,
             'Masuk' => in_array($t->transaction_type, ['PURCHASE', 'PRODUCTION', 'RETURN_IN', 'ADJUSTMENT_IN']) ? $t->quantity : 0,
             'Keluar' => in_array($t->transaction_type, ['PRODUCTION', 'SALE', 'WASTE', 'RETURN_OUT', 'ADJUSTMENT_OUT']) ? $t->quantity : 0,
             'Saldo' => $t->balance_after,
-            'Referensi' => $t->reference_type . ' #' . $t->reference_id,
+            'Referensi' => $t->reference_type.' #'.$t->reference_id,
             'Catatan' => $t->notes,
         ]);
 
@@ -299,10 +310,11 @@ class InventoryController extends Controller
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('reports.stock-card', ['data' => $data, 'item_type' => $request->item_type, 'item_id' => $request->item_id]);
-            return $pdf->download('kartu-stok-' . now()->format('Y-m-d') . '.pdf');
+
+            return $pdf->download('kartu-stok-'.now()->format('Y-m-d').'.pdf');
         }
 
-        return Excel::download(new InventoryExport($data, 'Kartu Stok'), 'kartu-stok-' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new InventoryExport($data, 'Kartu Stok'), 'kartu-stok-'.now()->format('Y-m-d').'.xlsx');
     }
 
     public function exportLowStock(Request $request)
@@ -310,7 +322,7 @@ class InventoryController extends Controller
         $data = RawMaterial::with(['category', 'unit'])
             ->orderByRaw('(stok - stok_minimum) ASC')
             ->get()
-            ->map(fn($r) => [
+            ->map(fn ($r) => [
                 'Kode' => $r->kode_bahan,
                 'Nama' => $r->nama_bahan,
                 'Kategori' => $r->category?->nama_kategori,
@@ -325,10 +337,11 @@ class InventoryController extends Controller
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('reports.low-stock', ['data' => $data]);
-            return $pdf->download('laporan-stok-rendah-' . now()->format('Y-m-d') . '.pdf');
+
+            return $pdf->download('laporan-stok-rendah-'.now()->format('Y-m-d').'.pdf');
         }
 
-        return Excel::download(new InventoryExport($data, 'Stok Rendah'), 'laporan-stok-rendah-' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new InventoryExport($data, 'Stok Rendah'), 'laporan-stok-rendah-'.now()->format('Y-m-d').'.xlsx');
     }
 
     public function exportExpiring(Request $request)
@@ -364,22 +377,22 @@ class InventoryController extends Controller
             });
 
         $data = $rawMaterials->concat($products)
-            ->sortBy(fn($item) => $item['Tanggal Kedaluwarsa'] === '-' ? '9999-12-31' : $item['Tanggal Kedaluwarsa'])
+            ->sortBy(fn ($item) => $item['Tanggal Kedaluwarsa'] === '-' ? '9999-12-31' : $item['Tanggal Kedaluwarsa'])
             ->values();
 
         if ($request->has('search') && $request->search) {
             $search = strtolower($request->search);
-            $data = $data->filter(fn($item) => str_contains(strtolower($item['Nama']), $search) || str_contains(strtolower($item['Kode']), $search))->values();
+            $data = $data->filter(fn ($item) => str_contains(strtolower($item['Nama']), $search) || str_contains(strtolower($item['Kode']), $search))->values();
         }
 
         $format = $request->get('format', 'xlsx');
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('reports.expiring', ['data' => $data]);
-            return $pdf->download('laporan-kedaluwarsa-' . now()->format('Y-m-d') . '.pdf');
+
+            return $pdf->download('laporan-kedaluwarsa-'.now()->format('Y-m-d').'.pdf');
         }
 
-        return Excel::download(new InventoryExport($data, 'Item Kedaluwarsa'), 'laporan-kedaluwarsa-' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new InventoryExport($data, 'Item Kedaluwarsa'), 'laporan-kedaluwarsa-'.now()->format('Y-m-d').'.xlsx');
     }
 }
-

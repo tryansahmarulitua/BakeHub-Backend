@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
-use App\Models\Product;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,66 +31,68 @@ class SalesController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $query->paginate($request->get('per_page', 10)),
+            'data' => $query->paginate($request->get('per_page', 10)),
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'customer_id'              => 'nullable|exists:customers,id',
-            'sale_date'                => 'required|date',
-            'discount'                 => 'numeric|min:0',
-            'tax'                      => 'numeric|min:0',
-            'payment_method'           => 'required|in:cash,transfer,qris,e_wallet',
-            'payment_amount'           => 'required|numeric|min:0',
-            'notes'                    => 'nullable|string',
-            'details'                  => 'required|array|min:1',
-            'details.*.product_id'     => 'required|exists:products,id',
-            'details.*.quantity'       => 'required|numeric|min:0.01',
-            'details.*.unit_price'     => 'required|numeric|min:0',
-            'details.*.discount'       => 'numeric|min:0',
+            'customer_id' => 'nullable|exists:customers,id',
+            'sale_date' => 'required|date',
+            'discount' => 'numeric|min:0',
+            'tax' => 'numeric|min:0',
+            'payment_method' => 'required|in:cash,transfer,qris,e_wallet',
+            'payment_amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
+            'details' => 'required|array|min:1',
+            'details.*.product_id' => 'required|exists:products,id',
+            'details.*.quantity' => 'required|numeric|min:0.01',
+            'details.*.unit_price' => 'required|numeric|min:0',
+            'details.*.discount' => 'numeric|min:0',
         ]);
 
         return DB::transaction(function () use ($request) {
-            $invoice = 'INV-' . now()->format('Ymd') . '-' . str_pad(Sale::count() + 1, 4, '0', STR_PAD_LEFT);
+            $invoice = 'INV-'.now()->format('Ymd').'-'.str_pad(Sale::count() + 1, 4, '0', STR_PAD_LEFT);
 
-            // Calculate totals
+            // Calculate totals (PPN 12% otomatis atas dasar Pengenaan Pajak setelah diskon)
             $subtotal = collect($request->details)->sum(function ($d) {
                 return ($d['quantity'] * $d['unit_price']) - ($d['discount'] ?? 0);
             });
-            $discount = $request->discount ?? 0;
-            $tax      = $request->tax ?? 0;
-            $total    = $subtotal - $discount + $tax;
-            $payment  = $request->payment_amount;
-            $change   = max(0, $payment - $total);
+            $discount = (float) ($request->discount ?? 0);
+            $dpp = max(0, $subtotal - $discount);
+            // Jika tax tidak dikirim atau null, hitung 12% otomatis dari DPP
+            $tax = $request->filled('tax') ? (float) $request->tax : round($dpp * 0.12, 2);
+            $total = $dpp + $tax;
+            $payment = (float) $request->payment_amount;
+            $change = max(0, $payment - $total);
 
             // BR-008: Cek stok sebelum proses
             foreach ($request->details as $d) {
                 $product = Product::find($d['product_id']);
-                if (!$product || (float) $product->stok < (float) $d['quantity']) {
+                if (! $product || (float) $product->stok < (float) $d['quantity']) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Stok produk {$product?->nama_produk} tidak mencukupi. Tersedia: " . ($product?->stok ?? 0),
+                        'message' => "Stok produk {$product?->nama_produk} tidak mencukupi. Tersedia: ".($product?->stok ?? 0),
                     ], 422);
                 }
             }
 
             $sale = Sale::create([
-                'invoice_number'  => $invoice,
-                'customer_id'     => $request->customer_id,
-                'sale_date'       => $request->sale_date,
-                'subtotal'        => $subtotal,
-                'discount'        => $discount,
-                'tax'             => $tax,
-                'total'           => $total,
-                'payment_amount'  => $payment,
-                'change_amount'   => $change,
-                'payment_method'  => $request->payment_method,
-                'payment_status'  => 'paid',
-                'status'          => 'completed',
-                'notes'           => $request->notes,
-                'created_by'      => $request->user()->id,
+                'invoice_number' => $invoice,
+                'customer_id' => $request->customer_id,
+                'sale_date' => $request->sale_date,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'tax' => $tax,
+                'total' => $total,
+                'payment_amount' => $payment,
+                'change_amount' => $change,
+                'payment_method' => $request->payment_method,
+                'payment_status' => 'paid',
+                'status' => 'completed',
+                'notes' => $request->notes,
+                'created_by' => $request->user()->id,
             ]);
 
             // BR-007: Kurangi stok produk, BR-010: catat transaksi
@@ -98,12 +100,12 @@ class SalesController extends Controller
                 $itemSubtotal = ($d['quantity'] * $d['unit_price']) - ($d['discount'] ?? 0);
 
                 SaleDetail::create([
-                    'sale_id'    => $sale->id,
+                    'sale_id' => $sale->id,
                     'product_id' => $d['product_id'],
-                    'quantity'   => $d['quantity'],
+                    'quantity' => $d['quantity'],
                     'unit_price' => $d['unit_price'],
-                    'discount'   => $d['discount'] ?? 0,
-                    'subtotal'   => $itemSubtotal,
+                    'discount' => $d['discount'] ?? 0,
+                    'subtotal' => $itemSubtotal,
                 ]);
 
                 $this->inventory->stockOut(
@@ -121,7 +123,7 @@ class SalesController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Penjualan berhasil dicatat',
-                'data'    => $sale->load(['customer', 'details.product']),
+                'data' => $sale->load(['customer', 'details.product']),
             ], 201);
         });
     }
@@ -130,7 +132,7 @@ class SalesController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data'    => $sale->load(['customer', 'creator', 'details.product.unit']),
+            'data' => $sale->load(['customer', 'creator', 'details.product.unit']),
         ]);
     }
 
