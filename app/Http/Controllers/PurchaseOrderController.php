@@ -11,7 +11,7 @@ class PurchaseOrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PurchaseOrder::with(['supplier', 'creator'])
+        $query = PurchaseOrder::with(['supplier', 'creator', 'details.rawMaterial.unit'])
             ->orderByDesc('created_at');
 
         if ($request->search) {

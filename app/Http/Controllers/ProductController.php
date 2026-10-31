@@ -30,11 +30,13 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'unit_id' => 'required|exists:units,id',
             'harga_jual' => 'required|numeric|min:0',
-            'harga_modal' => 'required|numeric|min:0',
+            'harga_modal' => 'nullable|numeric|min:0',
             'stok' => 'required|numeric|min:0',
             'tanggal_kedaluwarsa' => 'nullable|date',
             'status' => 'in:aktif,nonaktif',
         ]);
+
+        $validated['harga_modal'] = $validated['harga_modal'] ?? 0;
 
         // Auto-generate kode produk berdasarkan category_id
         $validated['kode_produk'] = \App\Services\CodeGeneratorService::generateProductCode($validated['category_id']);
@@ -63,11 +65,15 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'unit_id' => 'required|exists:units,id',
             'harga_jual' => 'required|numeric|min:0',
-            'harga_modal' => 'required|numeric|min:0',
+            'harga_modal' => 'nullable|numeric|min:0',
             'stok' => 'required|numeric|min:0',
             'tanggal_kedaluwarsa' => 'nullable|date',
             'status' => 'in:aktif,nonaktif',
         ]);
+
+        if (!array_key_exists('harga_modal', $validated) || $validated['harga_modal'] === null) {
+            $validated['harga_modal'] = $product->harga_modal ?? 0;
+        }
 
         // Jika kategori berubah, regenerate kode
         if ($product->category_id != $validated['category_id']) {
