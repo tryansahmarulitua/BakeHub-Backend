@@ -68,14 +68,18 @@ class ReportController extends Controller
 
     public function sales(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Sale::with(['customer', 'details.product.unit'])
+            ->where('status', 'completed');
 
-        $sales = Sale::with(['customer', 'details.product'])
-            ->where('status', 'completed')
-            ->whereBetween('sale_date', [$from, $to])
-            ->orderBy('sale_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('sale_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('sale_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('sale_date', '<=', $request->to_date);
+        }
+
+        $sales = $query->orderByDesc('sale_date')->get();
 
         $summary = [
             'total_transactions' => $sales->count(),
@@ -88,14 +92,24 @@ class ReportController extends Controller
             'revenue' => $g->sum('total'),
         ]);
 
-        $topProducts = SaleDetail::select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(subtotal) as revenue'))
-            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereBetween('sale_date', [$from, $to]))
-            ->groupBy('product_id')->orderByDesc('total_qty')
+        $topQuery = SaleDetail::select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(subtotal) as revenue'))
+            ->whereHas('sale', function ($q) use ($request) {
+                $q->where('status', 'completed');
+                if ($request->filled('from_date') && $request->filled('to_date')) {
+                    $q->whereBetween('sale_date', [$request->from_date, $request->to_date]);
+                } elseif ($request->filled('from_date')) {
+                    $q->where('sale_date', '>=', $request->from_date);
+                } elseif ($request->filled('to_date')) {
+                    $q->where('sale_date', '<=', $request->to_date);
+                }
+            });
+
+        $topProducts = $topQuery->groupBy('product_id')->orderByDesc('total_qty')
             ->with('product:id,nama_produk')->limit(10)->get();
 
         return response()->json([
             'success' => true,
-            'data'    => compact('summary', 'byPayment', 'topProducts'),
+            'data'    => compact('sales', 'summary', 'byPayment', 'topProducts'),
         ]);
     }
 
@@ -118,20 +132,24 @@ class ReportController extends Controller
 
     public function production(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Production::with(['product', 'recipe'])
+            ->where('status', 'completed');
 
-        $productions = Production::with(['product', 'recipe'])
-            ->where('status', 'completed')
-            ->whereBetween('production_date', [$from, $to])
-            ->orderBy('production_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('production_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('production_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('production_date', '<=', $request->to_date);
+        }
+
+        $productions = $query->orderByDesc('production_date')->get();
 
         $summary = [
             'total_orders'  => $productions->count(),
             'total_qty'     => $productions->sum('quantity'),
             'by_product'    => $productions->groupBy('product_id')->map(fn($g) => [
-                'product'   => $g->first()->product->nama_produk,
+                'product'   => $g->first()->product?->nama_produk ?? '-',
                 'total_qty' => $g->sum('quantity'),
             ])->values(),
         ];
@@ -141,13 +159,17 @@ class ReportController extends Controller
 
     public function waste(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Waste::with('creator');
 
-        $wastes = Waste::with('creator')
-            ->whereBetween('waste_date', [$from, $to])
-            ->orderBy('waste_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('waste_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('waste_date', '<=', $request->to_date);
+        }
+
+        $wastes = $query->orderByDesc('waste_date')->get();
 
         $summary = [
             'total_records'        => $wastes->count(),
@@ -167,14 +189,18 @@ class ReportController extends Controller
 
     public function exportSalesPdf(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Sale::with(['customer', 'details.product'])
+            ->where('status', 'completed');
 
-        $sales = Sale::with(['customer', 'details.product'])
-            ->where('status', 'completed')
-            ->whereBetween('sale_date', [$from, $to])
-            ->orderBy('sale_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('sale_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('sale_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('sale_date', '<=', $request->to_date);
+        }
+
+        $sales = $query->orderBy('sale_date')->get();
 
         $summary = [
             'total_transactions' => $sales->count(),
@@ -182,32 +208,48 @@ class ReportController extends Controller
             'total_items'        => $sales->flatMap->details->sum('quantity'),
         ];
 
-        $topProducts = SaleDetail::select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(subtotal) as revenue'))
-            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereBetween('sale_date', [$from, $to]))
-            ->groupBy('product_id')->orderByDesc('total_qty')
+        $topQuery = SaleDetail::select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(subtotal) as revenue'))
+            ->whereHas('sale', function ($q) use ($request) {
+                $q->where('status', 'completed');
+                if ($request->filled('from_date') && $request->filled('to_date')) {
+                    $q->whereBetween('sale_date', [$request->from_date, $request->to_date]);
+                } elseif ($request->filled('from_date')) {
+                    $q->where('sale_date', '>=', $request->from_date);
+                } elseif ($request->filled('to_date')) {
+                    $q->where('sale_date', '<=', $request->to_date);
+                }
+            });
+
+        $topProducts = $topQuery->groupBy('product_id')->orderByDesc('total_qty')
             ->with('product:id,nama_produk')->limit(10)->get();
 
-        $fromDate = $from;
-        $toDate = $to;
+        $fromDate = $request->from_date ?: 'Semua';
+        $toDate = $request->to_date ?: 'Semua';
+        $filename = "laporan-penjualan-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".pdf";
+
         $pdf = Pdf::loadView('reports.sales', compact('sales', 'summary', 'topProducts', 'fromDate', 'toDate'));
-        return $pdf->download("laporan-penjualan-{$from}-{$to}.pdf");
+        return $pdf->download($filename);
     }
 
     public function exportSalesExcel(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Sale::with(['customer'])
+            ->where('status', 'completed');
 
-        $sales = Sale::with(['customer'])
-            ->where('status', 'completed')
-            ->whereBetween('sale_date', [$from, $to])
-            ->orderBy('sale_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('sale_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('sale_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('sale_date', '<=', $request->to_date);
+        }
+
+        $sales = $query->orderBy('sale_date')->get();
 
         $data = $sales->map(fn($s, $i) => [
             $i + 1,
             $s->invoice_number,
-            $s->sale_date,
+            $s->sale_date ? \Carbon\Carbon::parse($s->sale_date)->format('d/m/Y') : '-',
             $s->customer?->nama ?? 'Umum',
             str_replace('_', ' ', $s->payment_method),
             $s->total,
@@ -215,8 +257,9 @@ class ReportController extends Controller
         ])->toArray();
 
         $headings = ['No', 'No Invoice', 'Tanggal', 'Customer', 'Pembayaran', 'Total (Rp)', 'Status'];
+        $filename = "laporan-penjualan-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".xlsx";
 
-        return Excel::download(new ReportExport($data, $headings, 'Penjualan'), "laporan-penjualan-{$from}-{$to}.xlsx");
+        return Excel::download(new ReportExport($data, $headings, 'Penjualan'), $filename);
     }
 
     public function exportInventoryPdf()
@@ -260,45 +303,55 @@ class ReportController extends Controller
 
     public function exportProductionPdf(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Production::with(['product', 'recipe'])
+            ->where('status', 'completed');
 
-        $productions = Production::with(['product', 'recipe'])
-            ->where('status', 'completed')
-            ->whereBetween('production_date', [$from, $to])
-            ->orderBy('production_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('production_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('production_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('production_date', '<=', $request->to_date);
+        }
+
+        $productions = $query->orderBy('production_date')->get();
 
         $summary = [
             'total_orders'  => $productions->count(),
             'total_qty'     => $productions->sum('quantity'),
             'by_product'    => $productions->groupBy('product_id')->map(fn($g) => [
-                'product'   => $g->first()->product->nama_produk,
+                'product'   => $g->first()->product?->nama_produk ?? '-',
                 'total_qty' => $g->sum('quantity'),
             ])->values()->toArray(),
         ];
 
-        $fromDate = $from;
-        $toDate = $to;
+        $fromDate = $request->from_date ?: 'Semua';
+        $toDate = $request->to_date ?: 'Semua';
+        $filename = "laporan-produksi-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".pdf";
+
         $pdf = Pdf::loadView('reports.production', compact('productions', 'summary', 'fromDate', 'toDate'));
-        return $pdf->download("laporan-produksi-{$from}-{$to}.pdf");
+        return $pdf->download($filename);
     }
 
     public function exportProductionExcel(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Production::with(['product', 'recipe'])
+            ->where('status', 'completed');
 
-        $productions = Production::with(['product', 'recipe'])
-            ->where('status', 'completed')
-            ->whereBetween('production_date', [$from, $to])
-            ->orderBy('production_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('production_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('production_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('production_date', '<=', $request->to_date);
+        }
+
+        $productions = $query->orderBy('production_date')->get();
 
         $data = $productions->map(fn($p, $i) => [
             $i + 1,
             $p->production_code,
-            $p->production_date,
+            $p->production_date ? \Carbon\Carbon::parse($p->production_date)->format('d/m/Y') : '-',
             $p->product?->nama_produk ?? '-',
             $p->recipe?->name ?? '-',
             $p->quantity,
@@ -306,19 +359,24 @@ class ReportController extends Controller
         ])->toArray();
 
         $headings = ['No', 'Kode Produksi', 'Tanggal', 'Produk', 'Resep', 'Qty', 'Status'];
+        $filename = "laporan-produksi-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".xlsx";
 
-        return Excel::download(new ReportExport($data, $headings, 'Produksi'), "laporan-produksi-{$from}-{$to}.xlsx");
+        return Excel::download(new ReportExport($data, $headings, 'Produksi'), $filename);
     }
 
     public function exportWastePdf(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Waste::with('creator');
 
-        $wastes = Waste::with('creator')
-            ->whereBetween('waste_date', [$from, $to])
-            ->orderBy('waste_date')
-            ->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('waste_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('waste_date', '<=', $request->to_date);
+        }
+
+        $wastes = $query->orderBy('waste_date')->get();
 
         $summary = [
             'total_records'        => $wastes->count(),
@@ -327,23 +385,32 @@ class ReportController extends Controller
             'by_item_type'         => $wastes->groupBy('item_type')->map(fn($g) => ['count' => $g->count(), 'loss' => $g->sum('estimated_loss')])->toArray(),
         ];
 
-        $fromDate = $from;
-        $toDate = $to;
+        $fromDate = $request->from_date ?: 'Semua';
+        $toDate = $request->to_date ?: 'Semua';
+        $filename = "laporan-waste-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".pdf";
+
         $pdf = Pdf::loadView('reports.waste', compact('wastes', 'summary', 'fromDate', 'toDate'));
-        return $pdf->download("laporan-waste-{$from}-{$to}.pdf");
+        return $pdf->download($filename);
     }
 
     public function exportWasteExcel(Request $request)
     {
-        $from = $request->get('from_date', now()->startOfMonth()->format('Y-m-d'));
-        $to   = $request->get('to_date', now()->format('Y-m-d'));
+        $query = Waste::query();
 
-        $wastes = Waste::whereBetween('waste_date', [$from, $to])->orderBy('waste_date')->get();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);
+        } elseif ($request->filled('from_date')) {
+            $query->where('waste_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->where('waste_date', '<=', $request->to_date);
+        }
+
+        $wastes = $query->orderBy('waste_date')->get();
 
         $data = $wastes->map(fn($w, $i) => [
             $i + 1,
             $w->waste_code,
-            $w->waste_date,
+            $w->waste_date ? \Carbon\Carbon::parse($w->waste_date)->format('d/m/Y') : '-',
             $w->item_type === 'raw_material' ? 'Bahan Baku' : 'Produk',
             $w->item_code,
             $w->quantity,
@@ -352,7 +419,8 @@ class ReportController extends Controller
         ])->toArray();
 
         $headings = ['No', 'Kode Waste', 'Tanggal', 'Tipe Item', 'Kode Item', 'Qty', 'Alasan', 'Kerugian (Rp)'];
+        $filename = "laporan-waste-" . ($request->from_date ? "{$request->from_date}-{$request->to_date}" : "semua") . ".xlsx";
 
-        return Excel::download(new ReportExport($data, $headings, 'Waste'), "laporan-waste-{$from}-{$to}.xlsx");
+        return Excel::download(new ReportExport($data, $headings, 'Waste'), $filename);
     }
 }

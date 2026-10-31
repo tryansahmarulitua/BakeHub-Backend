@@ -18,7 +18,7 @@ class RecipeController extends Controller
 
     public function index(Request $request)
     {
-        $query = Recipe::with(['product', 'details.rawMaterial', 'details.unit'])
+        $query = Recipe::with(['product', 'details.rawMaterial.unit', 'details.unit'])
             ->orderByDesc('created_at');
 
         if ($request->search) {

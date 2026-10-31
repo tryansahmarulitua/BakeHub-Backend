@@ -15,7 +15,7 @@ class SalesController extends Controller
 
     public function index(Request $request)
     {
-        $query = Sale::with(['customer', 'creator'])
+        $query = Sale::with(['customer', 'creator', 'details.product.unit'])
             ->orderByDesc('sale_date')
             ->orderByDesc('id');
 
@@ -123,7 +123,7 @@ class SalesController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Penjualan berhasil dicatat',
-                'data' => $sale->load(['customer', 'details.product']),
+                'data' => $sale->load(['customer', 'creator', 'details.product.unit']),
             ], 201);
         });
     }

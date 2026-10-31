@@ -15,7 +15,7 @@ class GoodsReceiptController extends Controller
 
     public function index(Request $request)
     {
-        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'receiver'])
+        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'receiver', 'details.rawMaterial.unit'])
             ->orderByDesc('created_at');
 
         if ($request->purchase_order_id) {
@@ -73,7 +73,7 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Goods Receipt berhasil dibuat',
-                'data'    => $gr->load('details.rawMaterial'),
+                'data'    => $gr->load(['purchaseOrder.supplier', 'receiver', 'details.rawMaterial.unit']),
             ], 201);
         });
     }
@@ -131,7 +131,7 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Goods Receipt berhasil dikonfirmasi, stok telah diperbarui',
-                'data'    => $goodsReceipt->load('details.rawMaterial'),
+                'data'    => $goodsReceipt->load(['purchaseOrder.supplier', 'receiver', 'details.rawMaterial.unit']),
             ]);
         });
     }
