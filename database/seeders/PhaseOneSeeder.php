@@ -1,4 +1,3 @@
-
 <?php
 
 namespace Database\Seeders;
@@ -12,7 +11,6 @@ class PhaseOneSeeder extends Seeder
 {
     public function run(): void
     {
-        // Membuat role jika belum tersedia
         $roles = [
             'Owner',
             'Admin',
@@ -27,11 +25,9 @@ class PhaseOneSeeder extends Seeder
             ]);
         }
 
-        // Mengambil role berdasarkan nama
         $ownerRole = Role::where('name', 'Owner')->first();
         $adminRole = Role::where('name', 'Admin')->first();
 
-        // Membuat akun Owner
         User::firstOrCreate(
             ['email' => 'owner@bakehub.web.id'],
             [
@@ -41,9 +37,8 @@ class PhaseOneSeeder extends Seeder
             ]
         );
 
-        // Membuat akun Administrator
         User::firstOrCreate(
-            ['email' => 'admin@bakehub.web.id'],
+            ['email' => 'admin@bakehub.com'],
             [
                 'name' => 'Administrator',
                 'password' => Hash::make('password'),
