@@ -1,3 +1,4 @@
+
 <?php
 
 namespace Database\Seeders;
@@ -11,19 +12,43 @@ class PhaseOneSeeder extends Seeder
 {
     public function run(): void
     {
-        $roles = ['Owner', 'Admin', 'Staff Gudang', 'Staff Produksi', 'Kasir'];
+        // Membuat role jika belum tersedia
+        $roles = [
+            'Owner',
+            'Admin',
+            'Staff Gudang',
+            'Staff Produksi',
+            'Kasir',
+        ];
 
         foreach ($roles as $roleName) {
-            Role::create(['name' => $roleName]);
+            Role::firstOrCreate([
+                'name' => $roleName,
+            ]);
         }
 
+        // Mengambil role berdasarkan nama
+        $ownerRole = Role::where('name', 'Owner')->first();
         $adminRole = Role::where('name', 'Admin')->first();
 
-        User::create([
-            'name' => 'Administrator',
-            'email' => 'admin@bakehub.web.id',
-            'password' => Hash::make('password'),
-            'role_id' => $adminRole->id,
-        ]);
+        // Membuat akun Owner
+        User::firstOrCreate(
+            ['email' => 'owner@bakehub.web.id'],
+            [
+                'name' => 'Owner',
+                'password' => Hash::make('password'),
+                'role_id' => $ownerRole->id,
+            ]
+        );
+
+        // Membuat akun Administrator
+        User::firstOrCreate(
+            ['email' => 'admin@bakehub.web.id'],
+            [
+                'name' => 'Administrator',
+                'password' => Hash::make('password'),
+                'role_id' => $adminRole->id,
+            ]
+        );
     }
 }
