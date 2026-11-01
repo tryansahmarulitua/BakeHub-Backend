@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
         foreach ($users as $data) {
             User::updateOrCreate(
                 ['email' => $data['email']],
-                array_merge($data, ['password' => Hash::make('bakehub')])
+                array_merge($data, ['password' => Hash::make('password')])
             );
         }
     }
