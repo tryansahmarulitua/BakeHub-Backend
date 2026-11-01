@@ -21,7 +21,7 @@ class PhaseOneSeeder extends Seeder
 
         User::create([
             'name' => 'Administrator',
-            'email' => 'admin@bakehub.com',
+            'email' => 'admin@bakehub.web.id',
             'password' => Hash::make('password'),
             'role_id' => $adminRole->id,
         ]);
