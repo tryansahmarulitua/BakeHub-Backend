@@ -293,7 +293,7 @@ class ReportController extends Controller
             $r->unit?->name ?? '-',
             $r->harga_beli,
             $r->nilai_stok,
-            $r->tanggal_kedaluwarsa,
+            $r->tanggal_kedaluwarsa ? \Carbon\Carbon::parse($r->tanggal_kedaluwarsa)->format('d/m/Y') : '-',
         ])->toArray();
 
         $headings = ['No', 'Kode', 'Nama Bahan', 'Kategori', 'Stok', 'Satuan', 'Harga Beli (Rp)', 'Nilai Stok (Rp)', 'Tgl Expired'];
