@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Returns
     Route::apiResource('returns', ReturnController::class)->except(['update', 'destroy']);
     Route::post('returns/{return}/approve',  [ReturnController::class, 'approve']);
+    Route::post('returns/{return}/reject',   [ReturnController::class, 'reject']);
     Route::post('returns/{return}/complete', [ReturnController::class, 'complete']);
 
     // Wastes

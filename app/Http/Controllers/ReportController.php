@@ -159,7 +159,7 @@ class ReportController extends Controller
 
     public function waste(Request $request)
     {
-        $query = Waste::with('creator');
+        $query = Waste::with(['creator', 'product', 'rawMaterial']);
 
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);
@@ -366,7 +366,7 @@ class ReportController extends Controller
 
     public function exportWastePdf(Request $request)
     {
-        $query = Waste::with('creator');
+        $query = Waste::with(['creator', 'product', 'rawMaterial']);
 
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);
@@ -395,7 +395,7 @@ class ReportController extends Controller
 
     public function exportWasteExcel(Request $request)
     {
-        $query = Waste::query();
+        $query = Waste::with(['product', 'rawMaterial']);
 
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $query->whereBetween('waste_date', [$request->from_date, $request->to_date]);

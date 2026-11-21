@@ -13,7 +13,8 @@ class WasteController extends Controller
 
     public function index(Request $request)
     {
-        $query = Waste::with('creator')->orderByDesc('waste_date')->orderByDesc('id');
+        $query = Waste::with(['creator', 'product', 'rawMaterial'])
+            ->orderByDesc('waste_date')->orderByDesc('id');
 
         if ($request->item_type) {
             $query->where('item_type', $request->item_type);
